@@ -7,7 +7,8 @@ pub mod sqlx;
 pub use sqlx::DefaultSqlxStorage;
 
 use crate::storage::types::{
-    BlockInfo, ContractInfo, ContractType, StorageError, TokenEvent, TokenInfo, TokenMintInfo, MemecoinCreatedEvent
+    BlockInfo, ContractInfo, ContractType, MemecoinCreatedEvent, StorageError, TokenEvent,
+    TokenInfo, TokenMintInfo,
 };
 use async_trait::async_trait;
 
@@ -48,8 +49,8 @@ pub trait Storage {
     async fn register_memecoin_created_event(
         &self,
         event: &MemecoinCreatedEvent,
-        block_timestamp: u64) -> Result<(), StorageError>;
-
+        block_timestamp: u64,
+    ) -> Result<(), StorageError>;
 
     /// A block info is only set if the block has a number and a timestamp.
     async fn set_block_info(

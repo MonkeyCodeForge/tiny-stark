@@ -1,4 +1,4 @@
-use crate::storage::types::{EventType, TokenEvent, MemecoinCreatedEvent};
+use crate::storage::types::{EventType, MemecoinCreatedEvent, TokenEvent};
 use crate::storage::Storage;
 use crate::ContractType;
 use anyhow::{anyhow, Result};
@@ -93,7 +93,7 @@ impl<S: Storage> EventManager<S> {
         token_event.contract_type = contract_type.to_string();
         token_event.event_type = Self::get_event_type(from, to);
         token_event.event_id = to_hex_str(&event_id);
-        token_event.block_number = Some(event.block_number);
+        token_event.block_number = event.block_number;
         token_event.updated_at = Some(
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -166,7 +166,15 @@ impl<S: Storage> EventManager<S> {
     }
 
     /// helper method to parse the event details
-    fn get_memecoin_created_info_from_felts(felts: &[FieldElement]) -> Option<(FieldElement, FieldElement, FieldElement, CairoU256, FieldElement)> {
+    fn get_memecoin_created_info_from_felts(
+        felts: &[FieldElement],
+    ) -> Option<(
+        FieldElement,
+        FieldElement,
+        FieldElement,
+        CairoU256,
+        FieldElement,
+    )> {
         if felts.len() < 5 {
             return None;
         }
@@ -180,7 +188,6 @@ impl<S: Storage> EventManager<S> {
         let memecoin_address = felts[5];
         Some((owner, name, symbol, initial_supply, memecoin_address))
     }
-    
 }
 
 #[cfg(test)]
@@ -192,9 +199,9 @@ mod tests {
     fn setup_sample_event() -> EmittedEvent {
         EmittedEvent {
             from_address: FieldElement::from_hex_be("0x0").unwrap(),
-            block_hash: FieldElement::from_dec_str("786").unwrap(),
+            block_hash: Some(FieldElement::from_dec_str("786").unwrap()),
             transaction_hash: FieldElement::from_dec_str("5432").unwrap(),
-            block_number: 111,
+            block_number: Some(111),
             keys: vec![
                 TRANSFER_SELECTOR,
                 FieldElement::from_hex_be("0x1234").unwrap(),
@@ -252,9 +259,9 @@ mod tests {
         // and not in `event.keys`.
         let sample_event = EmittedEvent {
             from_address: FieldElement::from_hex_be("0x0").unwrap(),
-            block_hash: FieldElement::from_dec_str("786").unwrap(),
+            block_hash: Some(FieldElement::from_dec_str("786").unwrap()),
             transaction_hash: FieldElement::from_dec_str("5432").unwrap(),
-            block_number: 111,
+            block_number: Some(111),
             keys: vec![
                 TRANSFER_SELECTOR, // This is the selector, so it's not used to extract event data
             ],
@@ -300,7 +307,7 @@ mod tests {
         let result = manager.keys_selector().unwrap();
 
         // Define expected result
-        let expected = vec![vec![selector!("Transfer")]];
+        let expected = vec![vec![selector!("Transfer"), selector!("MemecoinCreated")]];
 
         // Assert the output
         assert_eq!(result, expected);

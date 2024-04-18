@@ -1,7 +1,7 @@
+use ark_starknet::CairoU256;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use ark_starknet::CairoU256;
 
 #[derive(Debug, Clone)]
 pub enum StorageError {
@@ -232,7 +232,13 @@ pub struct MemecoinCreatedEvent {
 }
 
 impl MemecoinCreatedEvent {
-    pub fn new(owner: String, name: String, symbol: String, initial_supply: CairoU256, memecoin_address: String) -> Self {
+    pub fn new(
+        owner: String,
+        name: String,
+        symbol: String,
+        initial_supply: CairoU256,
+        memecoin_address: String,
+    ) -> Self {
         MemecoinCreatedEvent {
             owner,
             name,

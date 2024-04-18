@@ -1,11 +1,11 @@
 use anyhow::Result;
 use ark_starknet::client::{StarknetClient, StarknetClientHttp};
-use tiny_stark::{
-    event_handler::EventHandler, storage::types::*, storage::Storage, Pontos, PontosConfig,
-};
 use async_trait::async_trait;
 use starknet::core::types::BlockId;
 use std::sync::Arc;
+use tiny_stark::{
+    event_handler::EventHandler, storage::types::*, storage::Storage, Pontos, PontosConfig,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -200,7 +200,11 @@ impl Storage for DefaultStorage {
         event: &MemecoinCreatedEvent,
         block_timestamp: u64,
     ) -> Result<(), StorageError> {
-        log::trace!("Registering memecoin created event {:?} at {}", event, block_timestamp);
+        log::trace!(
+            "Registering memecoin created event {:?} at {}",
+            event,
+            block_timestamp
+        );
         Ok(())
-    } 
+    }
 }
