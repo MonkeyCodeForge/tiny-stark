@@ -187,16 +187,16 @@ pub struct BlockInfo {
 #[serde(rename_all = "snake_case")]
 pub enum ContractType {
     Other,
-    ERC721,
-    ERC1155,
+    ERC20,
+    UNRUGGABLE,
 }
 
 impl ToString for ContractType {
     fn to_string(&self) -> String {
         match self {
             ContractType::Other => "OTHER".to_string(),
-            ContractType::ERC721 => "ERC721".to_string(),
-            ContractType::ERC1155 => "ERC1155".to_string(),
+            ContractType::ERC20 => "ERC20".to_string(),
+            ContractType::UNRUGGABLE => "UNRUGGABLE".to_string(),
         }
     }
 }
@@ -206,8 +206,8 @@ impl FromStr for ContractType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "ERC721" => Ok(ContractType::ERC721),
-            "ERC1155" => Ok(ContractType::ERC1155),
+            "ERC20" => Ok(ContractType::ERC20),
+            "UNRUGGABLE" => Ok(ContractType::UNRUGGABLE),
             _ => Ok(ContractType::Other),
         }
     }

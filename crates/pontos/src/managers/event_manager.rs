@@ -227,7 +227,7 @@ mod tests {
         let manager = EventManager::new(Arc::new(storage));
 
         let sample_event = setup_sample_event();
-        let contract_type = ContractType::ERC721;
+        let contract_type = ContractType::UNRUGGABLE;
         let timestamp = 1234567890;
 
         let result = manager
@@ -273,7 +273,7 @@ mod tests {
             ],
         };
 
-        let contract_type = ContractType::ERC721;
+        let contract_type = ContractType::UNRUGGABLE;
         let timestamp = 1234567890;
 
         // Call the `format_event` function
