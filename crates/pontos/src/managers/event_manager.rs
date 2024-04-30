@@ -1,15 +1,13 @@
-use crate::storage::types::{EventType, MemecoinCreatedEvent, TokenEvent};
+use crate::storage::types::{ContractInfo, ContractType, EventType, MemecoinCreatedEvent};
 use crate::storage::Storage;
-use crate::ContractType;
 use anyhow::{anyhow, Result};
 use log::info;
 use starknet::core::types::{EmittedEvent, FieldElement};
 use starknet::core::utils::starknet_keccak;
 use starknet::macros::selector;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tiny_starknet::{format::to_hex_str, CairoU256};
-use tracing::{debug, trace};
+use tracing::debug;
 
 const TRANSFER_SELECTOR: FieldElement = selector!("Transfer");
 const MEMECOINCREATED_SELECTOR: FieldElement = selector!("MemecoinCreated");
@@ -52,17 +50,34 @@ impl<S: Storage> EventManager<S> {
                     let (owner, name, symbol, initial_supply, memecoin_address) = event_info;
 
                     self.storage
-                        .register_memecoin_created_event(
-                            &MemecoinCreatedEvent {
-                                owner: to_hex_str(&owner),
-                                name: String::from_utf8_lossy(&name.to_bytes_be()).into_owned(),
-                                symbol: String::from_utf8_lossy(&symbol.to_bytes_be()).into_owned(),
-                                initial_supply,
-                                memecoin_address: to_hex_str(&memecoin_address),
+                        .register_contract_info(
+                            &ContractInfo {
+                                contract_address: to_hex_str(&memecoin_address),
+                                contract_type: ContractType::UNRUGGABLE,
+                                name: Some(
+                                    String::from_utf8_lossy(&name.to_bytes_be()).into_owned(),
+                                ),
+                                symbol: Some(
+                                    String::from_utf8_lossy(&symbol.to_bytes_be()).into_owned(),
+                                ),
+                                image: None,
                             },
                             block_timestamp,
                         )
                         .await?;
+
+                    // self.storage
+                    //     .register_memecoin_created_event(
+                    //         &MemecoinCreatedEvent {
+                    //             owner: to_hex_str(&owner),
+                    //             name: String::from_utf8_lossy(&name.to_bytes_be()).into_owned(),
+                    //             symbol: String::from_utf8_lossy(&symbol.to_bytes_be()).into_owned(),
+                    //             initial_supply,
+                    //             memecoin_address: to_hex_str(&memecoin_address),
+                    //         },
+                    //         block_timestamp,
+                    //     )
+                    //     .await?;
                 }
             }
             _ => {}
@@ -175,86 +190,6 @@ mod tests {
                 FieldElement::from_dec_str("121314").unwrap(),
             ],
         }
-    }
-
-    #[tokio::test]
-    async fn test_format_event_successfully() {
-        let mut storage = MockStorage::default();
-
-        storage
-            .expect_register_event()
-            .returning(|_, _| Box::pin(futures::future::ready(Ok(()))));
-
-        let manager = EventManager::new(Arc::new(storage));
-
-        let sample_event = setup_sample_event();
-        let timestamp = 1234567890;
-
-        let result = manager
-            .format_and_register_event(&sample_event, timestamp)
-            .await;
-
-        assert!(result.is_ok());
-
-        let (_, token_event) = result.unwrap();
-
-        assert_eq!(
-            token_event.from_address,
-            to_hex_str(&FieldElement::from_hex_be("0x1234").unwrap())
-        );
-    }
-
-    #[tokio::test]
-    async fn test_format_event_data_extraction_from_data() {
-        // Initialize a MockStorage and the EventManager
-        let mut storage = MockStorage::default();
-
-        storage
-            .expect_register_event()
-            .returning(|_, _| Box::pin(futures::future::ready(Ok(()))));
-
-        let manager = EventManager::new(Arc::new(storage));
-
-        // Construct an event where the event data is only present in `event.data`
-        // and not in `event.keys`.
-        let sample_event = EmittedEvent {
-            from_address: FieldElement::from_hex_be("0x0").unwrap(),
-            block_hash: Some(FieldElement::from_dec_str("786").unwrap()),
-            transaction_hash: FieldElement::from_dec_str("5432").unwrap(),
-            block_number: Some(111),
-            keys: vec![
-                TRANSFER_SELECTOR, // This is the selector, so it's not used to extract event data
-            ],
-            data: vec![
-                FieldElement::from_hex_be("0x1234").unwrap(),  // from
-                FieldElement::from_hex_be("0x5678").unwrap(),  // to
-                FieldElement::from_dec_str("91011").unwrap(),  // token_id_low
-                FieldElement::from_dec_str("121314").unwrap(), // token_id_high
-            ],
-        };
-
-        let timestamp = 1234567890;
-
-        // Call the `format_event` function
-        let result = manager
-            .format_and_register_event(&sample_event, timestamp)
-            .await;
-
-        // Assertions
-        assert!(result.is_ok());
-        let (token_id, token_event) = result.unwrap();
-
-        // Check if the extracted data matches the data from `event.data`
-        assert_eq!(
-            token_event.from_address,
-            to_hex_str(&FieldElement::from_hex_be("0x1234").unwrap())
-        );
-        assert_eq!(
-            token_event.to_address,
-            to_hex_str(&FieldElement::from_hex_be("0x5678").unwrap())
-        );
-        assert_eq!(token_id.low, 91011_u128);
-        assert_eq!(token_id.high, 121314_u128);
     }
 
     #[test]

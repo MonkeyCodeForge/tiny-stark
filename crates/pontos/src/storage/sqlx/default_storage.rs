@@ -6,8 +6,10 @@
 use async_trait::async_trait;
 
 use log::trace;
+use sqlx::any::install_default_drivers;
 use sqlx::{any::AnyPoolOptions, AnyPool, Error as SqlxError, FromRow};
 use std::str::FromStr;
+use tracing::{error, info};
 
 use super::types::*;
 use crate::storage::types::*;
@@ -29,11 +31,10 @@ impl DefaultSqlxStorage {
     }
 
     pub async fn new_any(db_url: &str) -> Result<Self, StorageError> {
+        install_default_drivers();
+
         Ok(Self {
-            pool: AnyPoolOptions::new()
-                .max_connections(1)
-                .connect(db_url)
-                .await?,
+            pool: AnyPoolOptions::new().connect(db_url).await?,
         })
     }
 
@@ -131,6 +132,16 @@ impl DefaultSqlxStorage {
 
 #[async_trait]
 impl Storage for DefaultSqlxStorage {
+    async fn register_memecoin_created_event(
+        &self,
+        event: &MemecoinCreatedEvent,
+        block_timestamp: u64,
+    ) -> Result<(), StorageError> {
+        // TODO: Implement this
+
+        Ok(())
+    }
+
     async fn register_mint(
         &self,
         contract_address: &str,
@@ -203,7 +214,7 @@ impl Storage for DefaultSqlxStorage {
             )));
         }
 
-        let q = "INSERT INTO event (block_timestamp, contract_address, from_address, to_address, transaction_hash, token_id, token_id_hex, contract_type, event_type, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        let q = "INSERT INTO event (block_timestamp, contract_address, from_address, to_address, transaction_hash, token_id, token_id_hex, event_type, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         let _r = sqlx::query(q)
             .bind(event.timestamp.to_string())
@@ -213,7 +224,6 @@ impl Storage for DefaultSqlxStorage {
             .bind(event.transaction_hash.clone())
             .bind(event.token_id.clone())
             .bind(event.token_id_hex.clone())
-            .bind(event.contract_type.clone())
             .bind(event.event_type.to_string())
             .bind(event.event_id.clone())
             .execute(&self.pool)
@@ -305,7 +315,7 @@ impl Storage for DefaultSqlxStorage {
     async fn get_block_info(&self, block_number: u64) -> Result<BlockInfo, StorageError> {
         trace!("Getting block info for block #{}", block_number);
 
-        let q = "SELECT * FROM block WHERE block_number = ?";
+        let q: &str = "SELECT * FROM block WHERE block_number = ?";
 
         match sqlx::query(q)
             .bind(block_number.to_string())
@@ -313,6 +323,8 @@ impl Storage for DefaultSqlxStorage {
             .await
         {
             Ok(rows) => {
+                info!("=> rows:");
+
                 if rows.is_empty() {
                     Err(StorageError::NotFound(format!(
                         "block number {block_number}"
@@ -327,7 +339,10 @@ impl Storage for DefaultSqlxStorage {
                     })
                 }
             }
-            Err(e) => Err(StorageError::DatabaseError(e.to_string())),
+            Err(e) => {
+                error!("Error: {:?}", e.to_string());
+                Err(StorageError::DatabaseError(e.to_string()))
+            }
         }
     }
 

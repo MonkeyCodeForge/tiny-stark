@@ -12,7 +12,7 @@ thiserror = "1.0.40"
 anyhow = "1.0"
 async-trait = "0.1.73"
 tiny_starknet = { path = "../tiny_starknet" }
-pontos = { path = "../pontos" }
+pontos = { path = "../pontos", features = ["sqlxdb"] }
 starknet = "0.10.0"
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15.0"

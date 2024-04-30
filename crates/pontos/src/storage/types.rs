@@ -181,12 +181,18 @@ pub struct BlockInfo {
     pub block_number: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ContractType {
     Other,
     ERC20,
     UNRUGGABLE,
+}
+
+impl Default for ContractType {
+    fn default() -> Self {
+        ContractType::Other
+    }
 }
 
 impl ToString for ContractType {
@@ -214,7 +220,7 @@ impl FromStr for ContractType {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ContractInfo {
     pub contract_address: String,
-    pub contract_type: String,
+    pub contract_type: ContractType,
     pub name: Option<String>,
     pub symbol: Option<String>,
     pub image: Option<String>,
