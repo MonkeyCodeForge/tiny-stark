@@ -4,8 +4,6 @@ pub mod storage;
 
 use crate::storage::types::BlockIndexingStatus;
 use anyhow::Result;
-use ark_starknet::client::{StarknetClient, StarknetClientError};
-use ark_starknet::format::to_hex_str;
 use event_handler::EventHandler;
 use managers::{BlockManager, ContractManager, EventManager, PendingBlockData, TokenManager};
 use starknet::core::types::*;
@@ -13,6 +11,8 @@ use std::fmt;
 use std::sync::Arc;
 use storage::types::{ContractType, StorageError};
 use storage::Storage;
+use tiny_starknet::client::{StarknetClient, StarknetClientError};
+use tiny_starknet::format::to_hex_str;
 use tokio::sync::RwLock as AsyncRwLock;
 use tracing::{debug, error, info, trace, warn};
 

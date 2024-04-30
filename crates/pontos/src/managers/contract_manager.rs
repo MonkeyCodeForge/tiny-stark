@@ -3,12 +3,12 @@ use crate::storage::{
     Storage,
 };
 use anyhow::Result;
-use ark_starknet::client::{StarknetClient, StarknetClientError};
-use ark_starknet::format::to_hex_str;
 use starknet::core::types::{BlockId, BlockTag, FieldElement};
 use starknet::core::utils::{get_selector_from_name, parse_cairo_short_string};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tiny_starknet::client::{StarknetClient, StarknetClientError};
+use tiny_starknet::format::to_hex_str;
 use tracing::trace;
 
 pub struct ContractManager<S: Storage, C: StarknetClient> {

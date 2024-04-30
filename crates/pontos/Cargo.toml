@@ -1,0 +1,28 @@
+[package]
+name = "pontos"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+futures = "0.3"
+log = "0.4"
+num-bigint = { version = "0.4.3", default-features = false }
+serde = { version = "1.0.130", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0.40"
+version-compare = "0.2.0"
+tracing = "0.1"
+sqlx = { version = "0.7", optional = true }
+anyhow = "1.0"
+tokio = { version = "1", features = ["full"] }
+tiny_starknet = { path = "../tiny_starknet" }
+starknet = "0.10.0"
+async-trait = "0.1.73"
+url = "2.2.2"
+
+[dev-dependencies]
+mockall = "0.12.1"
+
+[features]
+sqlxdb = ["sqlx"]

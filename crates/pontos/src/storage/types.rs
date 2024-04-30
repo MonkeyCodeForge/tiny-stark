@@ -1,7 +1,7 @@
-use ark_starknet::CairoU256;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use tiny_starknet::CairoU256;
 
 #[derive(Debug, Clone)]
 pub enum StorageError {
