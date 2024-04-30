@@ -1,5 +1,5 @@
 use starknet::{
-    core::types::{BlockId, BlockTag},
+    core::types::{BlockId, BlockTag,MaybePendingBlockWithTxHashes, FieldElement},
     providers::{
         jsonrpc::{HttpTransport, JsonRpcClient},
         Provider
@@ -16,5 +16,18 @@ async fn main() {
     let latest_block = provider
         .get_block_with_tx_hashes(BlockId::Tag(BlockTag::Latest))
         .await;
-    println!("{latest_block:#?}");
+
+    match latest_block {
+        Ok(MaybePendingBlockWithTxHashes::Block(block)) => {
+            for tx_hash in block.transactions {
+                println!("{tx_hash}");
+            }
+        },
+        Ok(MaybePendingBlockWithTxHashes::PendingBlock(block)) => {
+            println!("Pending block found - handling pending transactions may vary");
+        },
+        Err(e) => {
+            println!("Failed to fetch the latest block: {e:?}");
+        }
+    }
 }

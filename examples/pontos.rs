@@ -1,7 +1,3 @@
-//! How to start a NFT indexer.
-//!
-//! Can be run with `cargo run --example pontos`.
-//!
 use anyhow::Result;
 use ark_starknet::client::{StarknetClient, StarknetClientHttp};
 use tiny_stark::{
