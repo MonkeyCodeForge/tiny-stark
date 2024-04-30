@@ -269,20 +269,20 @@ impl<S: Storage, C: StarknetClient, E: EventHandler + Send + Sync> Pontos<S, C, 
                 }
             };
 
-            if self
-                .block_manager
-                .should_skip_indexing(
-                    current_u64,
-                    block_ts,
-                    &self.config.indexer_version,
-                    do_force,
-                )
-                .await?
-            {
-                info!("Skipping block {}", current_u64);
-                current_u64 += 1;
-                continue;
-            }
+            // if self
+            //     .block_manager
+            //     .should_skip_indexing(
+            //         current_u64,
+            //         block_ts,
+            //         &self.config.indexer_version,
+            //         do_force,
+            //     )
+            //     .await?
+            // {
+            //     info!("Skipping block {}", current_u64);
+            //     current_u64 += 1;
+            //     continue;
+            // }
 
             self.event_handler
                 .on_block_processing(block_ts, Some(current_u64))

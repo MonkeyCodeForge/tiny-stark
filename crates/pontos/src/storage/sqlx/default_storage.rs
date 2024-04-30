@@ -54,7 +54,7 @@ impl DefaultSqlxStorage {
         contract_address: &str,
         token_id_hex: &str,
     ) -> Result<Option<TokenData>, StorageError> {
-        let q = "SELECT * FROM token WHERE contract_address = ? AND token_id_hex = ?";
+        let q = "SELECT * FROM token WHERE contract_address = $1 AND token_id_hex = $2";
 
         match sqlx::query(q)
             .bind(contract_address)
@@ -74,7 +74,7 @@ impl DefaultSqlxStorage {
     }
 
     async fn get_event_by_id(&self, event_id: &str) -> Result<Option<EventData>, StorageError> {
-        let q = "SELECT * FROM event WHERE event_id = ?";
+        let q = "SELECT * FROM event WHERE event_id = $1";
 
         match sqlx::query(q).bind(event_id).fetch_all(&self.pool).await {
             Ok(rows) => {
@@ -92,7 +92,7 @@ impl DefaultSqlxStorage {
         &self,
         contract_address: &str,
     ) -> Result<Option<ContractData>, StorageError> {
-        let q = "SELECT * FROM contract WHERE contract_address = ?";
+        let q = "SELECT * FROM contract WHERE contract_address = $1";
 
         match sqlx::query(q)
             .bind(contract_address.to_string())
@@ -111,13 +111,9 @@ impl DefaultSqlxStorage {
     }
 
     async fn get_block_by_timestamp(&self, ts: u64) -> Result<Option<BlockData>, StorageError> {
-        let q = "SELECT * FROM block WHERE block_timestamp = ?";
+        let q = "SELECT * FROM block WHERE block_timestamp = $1";
 
-        match sqlx::query(q)
-            .bind(ts.to_string())
-            .fetch_all(&self.pool)
-            .await
-        {
+        match sqlx::query(q).bind(ts as i64).fetch_all(&self.pool).await {
             Ok(rows) => {
                 if rows.is_empty() {
                     Ok(None)
@@ -155,7 +151,7 @@ impl Storage for DefaultSqlxStorage {
             info
         );
 
-        let q = "UPDATE token SET mint_address = ?, mint_timestamp = ?, mint_transaction_hash = ? WHERE token_id_hex = ?";
+        let q = "UPDATE token SET mint_address = $1, mint_timestamp = $2, mint_transaction_hash = $3 WHERE token_id_hex = $4";
 
         let _r = sqlx::query(q)
             .bind(info.address.clone())
@@ -186,14 +182,14 @@ impl Storage for DefaultSqlxStorage {
             )));
         }
 
-        let q = "INSERT INTO token (contract_address, token_id, token_id_hex, owner, block_timestamp) VALUES (?, ?, ?, ?, ?)";
+        let q = "INSERT INTO token (contract_address, token_id, token_id_hex, owner, block_timestamp) VALUES ($1, $2, $3, $4, $5)";
 
         let _r = sqlx::query(q)
             .bind(token.contract_address.clone())
             .bind(token.token_id.clone())
             .bind(token.token_id_hex.clone())
             .bind(token.owner.clone())
-            .bind(block_timestamp.to_string())
+            .bind(block_timestamp as i64)
             .execute(&self.pool)
             .await?;
 
@@ -214,10 +210,10 @@ impl Storage for DefaultSqlxStorage {
             )));
         }
 
-        let q = "INSERT INTO event (block_timestamp, contract_address, from_address, to_address, transaction_hash, token_id, token_id_hex, event_type, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        let q = "INSERT INTO event (block_timestamp, contract_address, from_address, to_address, transaction_hash, token_id, token_id_hex, event_type, event_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
 
         let _r = sqlx::query(q)
-            .bind(event.timestamp.to_string())
+            .bind(event.timestamp as i64)
             .bind(event.from_address.clone())
             .bind(event.to_address.clone())
             .bind(event.contract_address.clone())
@@ -265,12 +261,12 @@ impl Storage for DefaultSqlxStorage {
             )));
         }
 
-        let q = "INSERT INTO contract (contract_address, contract_type, block_timestamp) VALUES (?, ?, ?)";
+        let q = "INSERT INTO contract (contract_address, contract_type, block_timestamp) VALUES ($1, $2, $3)";
 
         let _r = sqlx::query(q)
             .bind(info.contract_address.clone())
             .bind(info.contract_type.to_string())
-            .bind(block_timestamp.to_string())
+            .bind(block_timestamp as i64)
             .execute(&self.pool)
             .await?;
 
@@ -286,22 +282,21 @@ impl Storage for DefaultSqlxStorage {
         trace!("Setting block info {:?} for block #{}", info, block_number);
 
         let _r = if (self.get_block_by_timestamp(block_timestamp).await?).is_some() {
-            let q = "UPDATE block SET block_timestamp = ?, block_number = ?, status = ?, indexer_version = ?, indexer_identifier = ? WHERE block_timestamp = ?";
+            let q = "UPDATE block SET block_timestamp = $1, block_number = $2, status = $3, indexer_version = $4, indexer_identifier = $5 WHERE block_timestamp = $1";
             sqlx::query(q)
-                .bind(block_timestamp.to_string())
-                .bind(block_number.to_string())
+                .bind(block_timestamp as i64)
+                .bind(block_number as i64)
                 .bind(info.status.to_string())
                 .bind(info.indexer_version.clone())
                 .bind(info.indexer_identifier.clone())
-                .bind(block_timestamp.to_string())
                 .execute(&self.pool)
                 .await?
         } else {
-            let q = "INSERT INTO block (block_timestamp, block_number, status, indexer_version, indexer_identifier) VALUES (?, ?, ?, ?, ?)";
+            let q = "INSERT INTO block (block_timestamp, block_number, status, indexer_version, indexer_identifier) VALUES ($1, $2, $3, $4, $5)";
 
             sqlx::query(q)
-                .bind(block_timestamp.to_string())
-                .bind(block_number.to_string())
+                .bind(block_timestamp as i64)
+                .bind(block_number as i64)
                 .bind(info.status.to_string())
                 .bind(info.indexer_version.clone())
                 .bind(info.indexer_identifier.clone())
@@ -315,16 +310,14 @@ impl Storage for DefaultSqlxStorage {
     async fn get_block_info(&self, block_number: u64) -> Result<BlockInfo, StorageError> {
         trace!("Getting block info for block #{}", block_number);
 
-        let q: &str = "SELECT * FROM block WHERE block_number = ?";
+        let q: &str = "SELECT * FROM block WHERE block_number = $1";
 
         match sqlx::query(q)
-            .bind(block_number.to_string())
+            .bind(block_number as i64)
             .fetch_all(&self.pool)
             .await
         {
             Ok(rows) => {
-                info!("=> rows:");
-
                 if rows.is_empty() {
                     Err(StorageError::NotFound(format!(
                         "block number {block_number}"
@@ -357,25 +350,25 @@ impl Storage for DefaultSqlxStorage {
             block_timestamp.to_string()
         );
 
-        let q = "DELETE FROM block WHERE block_timestamp = ?";
+        let q = "DELETE FROM block WHERE block_timestamp = $1";
         sqlx::query(q)
             .bind(block_timestamp.to_string())
             .fetch_all(&self.pool)
             .await?;
 
-        let q = "DELETE FROM contract WHERE block_timestamp = ?";
+        let q = "DELETE FROM contract WHERE block_timestamp = $1";
         sqlx::query(q)
             .bind(block_timestamp.to_string())
             .fetch_all(&self.pool)
             .await?;
 
-        let q = "DELETE FROM token WHERE block_timestamp = ?";
+        let q = "DELETE FROM token WHERE block_timestamp = $1";
         sqlx::query(q)
             .bind(block_timestamp.to_string())
             .fetch_all(&self.pool)
             .await?;
 
-        let q = "DELETE FROM event WHERE block_timestamp = ?";
+        let q = "DELETE FROM event WHERE block_timestamp = $1";
         sqlx::query(q)
             .bind(block_timestamp.to_string())
             .fetch_all(&self.pool)
