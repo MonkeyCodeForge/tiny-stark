@@ -16,3 +16,6 @@ pontos = { path = "../pontos" }
 starknet = "0.10.0"
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15.0"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing = "0.1"
+tracing-log = "0.2.0"

@@ -41,7 +41,7 @@ impl Storage for DefaultStorage {
         token: &TokenInfo,
         _block_timestamp: u64,
     ) -> Result<(), StorageError> {
-        println!("Registering token {:?}", token);
+        // println!("Registering token {:?}", token);
         Ok(())
     }
 
@@ -50,7 +50,7 @@ impl Storage for DefaultStorage {
         event: &TokenEvent,
         _block_timestamp: u64,
     ) -> Result<(), StorageError> {
-        println!("Registering event {:?}", event);
+        // println!("Registering event {:?}", event);
         Ok(())
     }
 

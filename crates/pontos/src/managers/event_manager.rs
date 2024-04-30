@@ -2,6 +2,7 @@ use crate::storage::types::{EventType, MemecoinCreatedEvent, TokenEvent};
 use crate::storage::Storage;
 use crate::ContractType;
 use anyhow::{anyhow, Result};
+use log::info;
 use starknet::core::types::{EmittedEvent, FieldElement};
 use starknet::core::utils::starknet_keccak;
 use starknet::macros::selector;
@@ -31,83 +32,43 @@ impl<S: Storage> EventManager<S> {
         Some(vec![vec![TRANSFER_SELECTOR, MEMECOINCREATED_SELECTOR]])
     }
 
-    /// Formats & register a token event based on the event content.
-    /// Returns the token_id if the event were identified.
     pub async fn format_and_register_event(
         &self,
         event: &EmittedEvent,
-        contract_type: ContractType,
         block_timestamp: u64,
-    ) -> Result<(CairoU256, TokenEvent)> {
-        let mut token_event = TokenEvent::default();
-
+    ) -> Result<()> {
         debug!(
-            "Processing event: event={:?}, contract_type={:?}, timestamp={}",
-            event, contract_type, block_timestamp
+            "Processing event: event={:?}, timestamp={}",
+            event, block_timestamp
         );
 
-        // Check if the event is a MemecoinCreated event
-        if event.keys[0] == MEMECOINCREATED_SELECTOR {
-            let event_info = Self::get_memecoin_created_info_from_felts(&event.data)
-                .ok_or_else(|| anyhow!("Invalid data for MemecoinCreated event"))?;
-            let (owner, name, symbol, initial_supply, memecoin_address) = event_info;
+        match event.keys.first() {
+            Some(event_selector) => {
+                if event_selector == &MEMECOINCREATED_SELECTOR {
+                    info!("MemecoinCreated event detected");
 
-            let memecoin_event = MemecoinCreatedEvent {
-                owner: to_hex_str(&owner),
-                name: String::from_utf8_lossy(&name.to_bytes_be()).into_owned(),
-                symbol: String::from_utf8_lossy(&symbol.to_bytes_be()).into_owned(),
-                initial_supply,
-                memecoin_address: to_hex_str(&memecoin_address),
-            };
+                    let event_info = Self::get_memecoin_created_info_from_felts(&event.data)
+                        .ok_or_else(|| anyhow!("Invalid data for MemecoinCreated event"))?;
+                    let (owner, name, symbol, initial_supply, memecoin_address) = event_info;
 
-            debug!("Processing MemecoinCreated event: {:?}", memecoin_event);
+                    self.storage
+                        .register_memecoin_created_event(
+                            &MemecoinCreatedEvent {
+                                owner: to_hex_str(&owner),
+                                name: String::from_utf8_lossy(&name.to_bytes_be()).into_owned(),
+                                symbol: String::from_utf8_lossy(&symbol.to_bytes_be()).into_owned(),
+                                initial_supply,
+                                memecoin_address: to_hex_str(&memecoin_address),
+                            },
+                            block_timestamp,
+                        )
+                        .await?;
+                }
+            }
+            _ => {}
+        };
 
-            // Implement logic to store or handle the MemecoinCreated event as needed
-            // self.storage.register_memecoin_created_event(&memecoin_event, block_timestamp).await?;
-            return Err(anyhow!("MemecoinCreated event processed"));
-        }
-
-        // As cairo didn't have keys before, we first check if the data
-        // contains the info. If not, we check into the keys, skipping the first
-        // element which is the selector.
-        let event_info: (FieldElement, FieldElement, CairoU256) =
-            if let Some(d_info) = Self::get_event_info_from_felts(&event.data) {
-                d_info
-            } else if let Some(k_info) = Self::get_event_info_from_felts(&event.keys[1..]) {
-                k_info
-            } else {
-                return Err(anyhow!("Can't find event data into this event"));
-            };
-
-        let (from, to, token_id) = event_info;
-
-        let event_id = Self::get_event_id(&token_id, &from, &to, block_timestamp, event);
-
-        token_event.from_address = to_hex_str(&from);
-        token_event.to_address = to_hex_str(&to);
-        token_event.contract_address = to_hex_str(&event.from_address);
-        token_event.transaction_hash = to_hex_str(&event.transaction_hash);
-        token_event.token_id_hex = token_id.to_hex();
-        token_event.token_id = token_id.to_decimal(false);
-        token_event.timestamp = block_timestamp;
-        token_event.contract_type = contract_type.to_string();
-        token_event.event_type = Self::get_event_type(from, to);
-        token_event.event_id = to_hex_str(&event_id);
-        token_event.block_number = event.block_number;
-        token_event.updated_at = Some(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
-
-        trace!("Registering event: {:?}", token_event);
-
-        self.storage
-            .register_event(&token_event, block_timestamp)
-            .await?;
-
-        Ok((token_id, token_event.clone()))
+        Ok(())
     }
 
     pub fn get_event_type(from: FieldElement, to: FieldElement) -> EventType {
@@ -227,11 +188,10 @@ mod tests {
         let manager = EventManager::new(Arc::new(storage));
 
         let sample_event = setup_sample_event();
-        let contract_type = ContractType::UNRUGGABLE;
         let timestamp = 1234567890;
 
         let result = manager
-            .format_and_register_event(&sample_event, contract_type, timestamp)
+            .format_and_register_event(&sample_event, timestamp)
             .await;
 
         assert!(result.is_ok());
@@ -273,12 +233,11 @@ mod tests {
             ],
         };
 
-        let contract_type = ContractType::UNRUGGABLE;
         let timestamp = 1234567890;
 
         // Call the `format_event` function
         let result = manager
-            .format_and_register_event(&sample_event, contract_type, timestamp)
+            .format_and_register_event(&sample_event, timestamp)
             .await;
 
         // Assertions
