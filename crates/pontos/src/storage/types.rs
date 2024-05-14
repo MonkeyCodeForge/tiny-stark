@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use ark_starknet::CairoU256;
+use tiny_starknet::CairoU256;
 
 #[derive(Debug, Clone)]
 pub enum StorageError {
@@ -72,7 +72,6 @@ pub struct TokenEvent {
     pub transaction_hash: String,
     pub token_id: String,
     pub token_id_hex: String,
-    pub contract_type: String,
     pub event_type: EventType,
     pub event_id: String,
     pub block_number: Option<u64>,
@@ -89,7 +88,6 @@ impl Default for TokenEvent {
             transaction_hash: String::new(),
             token_id: String::new(),
             token_id_hex: String::new(),
-            contract_type: String::new(),
             event_type: EventType::Uninitialized,
             event_id: "0".to_string(),
             block_number: None,
@@ -183,20 +181,26 @@ pub struct BlockInfo {
     pub block_number: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ContractType {
     Other,
-    ERC721,
-    ERC1155,
+    ERC20,
+    UNRUGGABLE,
+}
+
+impl Default for ContractType {
+    fn default() -> Self {
+        ContractType::Other
+    }
 }
 
 impl ToString for ContractType {
     fn to_string(&self) -> String {
         match self {
             ContractType::Other => "OTHER".to_string(),
-            ContractType::ERC721 => "ERC721".to_string(),
-            ContractType::ERC1155 => "ERC1155".to_string(),
+            ContractType::ERC20 => "ERC20".to_string(),
+            ContractType::UNRUGGABLE => "UNRUGGABLE".to_string(),
         }
     }
 }
@@ -206,8 +210,8 @@ impl FromStr for ContractType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "ERC721" => Ok(ContractType::ERC721),
-            "ERC1155" => Ok(ContractType::ERC1155),
+            "ERC20" => Ok(ContractType::ERC20),
+            "UNRUGGABLE" => Ok(ContractType::UNRUGGABLE),
             _ => Ok(ContractType::Other),
         }
     }
@@ -216,7 +220,7 @@ impl FromStr for ContractType {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ContractInfo {
     pub contract_address: String,
-    pub contract_type: String,
+    pub contract_type: ContractType,
     pub name: Option<String>,
     pub symbol: Option<String>,
     pub image: Option<String>,
@@ -232,7 +236,13 @@ pub struct MemecoinCreatedEvent {
 }
 
 impl MemecoinCreatedEvent {
-    pub fn new(owner: String, name: String, symbol: String, initial_supply: CairoU256, memecoin_address: String) -> Self {
+    pub fn new(
+        owner: String,
+        name: String,
+        symbol: String,
+        initial_supply: CairoU256,
+        memecoin_address: String,
+    ) -> Self {
         MemecoinCreatedEvent {
             owner,
             name,

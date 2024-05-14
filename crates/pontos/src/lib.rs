@@ -4,15 +4,16 @@ pub mod storage;
 
 use crate::storage::types::BlockIndexingStatus;
 use anyhow::Result;
-use ark_starknet::client::{StarknetClient, StarknetClientError};
-use ark_starknet::format::to_hex_str;
 use event_handler::EventHandler;
 use managers::{BlockManager, ContractManager, EventManager, PendingBlockData, TokenManager};
 use starknet::core::types::*;
+use starknet::macros::selector;
 use std::fmt;
 use std::sync::Arc;
 use storage::types::{ContractType, StorageError};
 use storage::Storage;
+use tiny_starknet::client::{StarknetClient, StarknetClientError};
+use tiny_starknet::format::to_hex_str;
 use tokio::sync::RwLock as AsyncRwLock;
 use tracing::{debug, error, info, trace, warn};
 
@@ -268,20 +269,20 @@ impl<S: Storage, C: StarknetClient, E: EventHandler + Send + Sync> Pontos<S, C, 
                 }
             };
 
-            if self
-                .block_manager
-                .should_skip_indexing(
-                    current_u64,
-                    block_ts,
-                    &self.config.indexer_version,
-                    do_force,
-                )
-                .await?
-            {
-                info!("Skipping block {}", current_u64);
-                current_u64 += 1;
-                continue;
-            }
+            // if self
+            //     .block_manager
+            //     .should_skip_indexing(
+            //         current_u64,
+            //         block_ts,
+            //         &self.config.indexer_version,
+            //         do_force,
+            //     )
+            //     .await?
+            // {
+            //     info!("Skipping block {}", current_u64);
+            //     current_u64 += 1;
+            //     continue;
+            // }
 
             self.event_handler
                 .on_block_processing(block_ts, Some(current_u64))
@@ -363,41 +364,9 @@ impl<S: Storage, C: StarknetClient, E: EventHandler + Send + Sync> Pontos<S, C, 
         block_timestamp: u64,
     ) -> IndexerResult<()> {
         for e in events {
-            let contract_address = e.from_address;
-            info!(
-                "Processing event... Block Id: {}, Tx Hash: 0x{:064x}",
-                e.block_number, e.transaction_hash
-            );
-
-            let contract_type = match self
-                .contract_manager
-                .write()
-                .await
-                .identify_contract(contract_address, block_timestamp)
-                .await
-            {
-                Ok(info) => info,
-                Err(e) => {
-                    warn!(
-                        "Error while identifying contract {}: {:?}",
-                        to_hex_str(&contract_address),
-                        e
-                    );
-                    continue;
-                }
-            };
-
-            if contract_type == ContractType::Other {
-                debug!(
-                    "Contract identified as OTHER: {}",
-                    to_hex_str(&contract_address),
-                );
-                continue;
-            }
-
-            let (token_id, token_event) = match self
+            match self
                 .event_manager
-                .format_and_register_event(&e, contract_type, block_timestamp)
+                .format_and_register_event(&e, block_timestamp)
                 .await
             {
                 Ok(te) => te,
@@ -406,18 +375,6 @@ impl<S: Storage, C: StarknetClient, E: EventHandler + Send + Sync> Pontos<S, C, 
                     continue;
                 }
             };
-
-            match self
-                .token_manager
-                .format_and_register_token(&token_id, &token_event, block_timestamp, e.block_number)
-                .await
-            {
-                Ok(()) => (),
-                Err(err) => {
-                    error!("Can't format token {:?}\ntevent: {:?}", err, token_event);
-                    continue;
-                }
-            }
         }
 
         Ok(())

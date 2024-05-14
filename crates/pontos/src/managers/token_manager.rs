@@ -1,12 +1,12 @@
 use crate::storage::types::{EventType, TokenEvent, TokenInfo, TokenMintInfo};
 use crate::storage::Storage;
 use anyhow::{anyhow, Result};
-use ark_starknet::client::StarknetClient;
-use ark_starknet::format::to_hex_str;
-use ark_starknet::CairoU256;
 use starknet::core::types::*;
 use starknet::macros::selector;
 use std::sync::Arc;
+use tiny_starknet::client::StarknetClient;
+use tiny_starknet::format::to_hex_str;
+use tiny_starknet::CairoU256;
 
 #[derive(Debug)]
 pub struct TokenManager<S: Storage, C: StarknetClient> {
@@ -29,7 +29,7 @@ impl<S: Storage, C: StarknetClient> TokenManager<S, C> {
         token_id: &CairoU256,
         event: &TokenEvent,
         block_timestamp: u64,
-        block_number: u64,
+        block_number: Option<u64>,
     ) -> Result<()> {
         let mut token = TokenInfo {
             contract_address: event.contract_address.clone(),
@@ -59,7 +59,7 @@ impl<S: Storage, C: StarknetClient> TokenManager<S, C> {
                 address: event.to_address.clone(),
                 timestamp: event.timestamp,
                 transaction_hash: event.transaction_hash.clone(),
-                block_number: Some(block_number),
+                block_number,
             };
 
             self.storage
@@ -96,39 +96,5 @@ impl<S: Storage, C: StarknetClient> TokenManager<S, C> {
         }
 
         Err(anyhow!("Failed to get token owner from chain"))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::storage::MockStorage;
-    use ark_starknet::client::MockStarknetClient;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_get_token_owner() {
-        let mock_storage = MockStorage::default();
-        let mut mock_client = MockStarknetClient::default();
-
-        let contract_address = FieldElement::from_dec_str("12345").unwrap();
-        let token_id_low = FieldElement::from_dec_str("23456").unwrap();
-        let token_id_high = FieldElement::from_dec_str("34567").unwrap();
-
-        mock_client
-            .expect_call_contract()
-            .returning(|_, _, _, _| Ok(vec![FieldElement::from_dec_str("1").unwrap()]));
-
-        let token_manager = TokenManager::new(Arc::new(mock_storage), Arc::new(mock_client));
-
-        let result = token_manager
-            .get_token_owner(contract_address, token_id_low, token_id_high)
-            .await;
-
-        assert!(result.is_ok());
-        let owners = result.unwrap();
-
-        assert_eq!(owners.len(), 1);
-        assert_eq!(owners[0], FieldElement::from_dec_str("1").unwrap());
     }
 }

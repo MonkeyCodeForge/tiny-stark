@@ -1,0 +1,21 @@
+[package]
+name = "indexer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "indexer"
+path = "src/main.rs"
+
+[dependencies]
+thiserror = "1.0.40"
+anyhow = "1.0"
+async-trait = "0.1.73"
+tiny_starknet = { path = "../tiny_starknet" }
+pontos = { path = "../pontos", features = ["sqlxdb"] }
+starknet = "0.10.0"
+tokio = { version = "1", features = ["full"] }
+dotenv = "0.15.0"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing = "0.1"
+tracing-log = "0.2.0"

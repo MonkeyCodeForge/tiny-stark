@@ -3,12 +3,12 @@ use crate::storage::{
     Storage,
 };
 use anyhow::Result;
-use ark_starknet::client::{StarknetClient, StarknetClientError};
-use ark_starknet::format::to_hex_str;
 use starknet::core::types::{BlockId, BlockTag, FieldElement};
 use starknet::core::utils::{get_selector_from_name, parse_cairo_short_string};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tiny_starknet::client::{StarknetClient, StarknetClientError};
+use tiny_starknet::format::to_hex_str;
 use tracing::trace;
 
 pub struct ContractManager<S: Storage, C: StarknetClient> {
@@ -71,7 +71,7 @@ impl<S: Storage, C: StarknetClient> ContractManager<S, C> {
 
                 let info = ContractInfo {
                     contract_address: to_hex_str(&address),
-                    contract_type: contract_type.to_string(),
+                    contract_type,
                     name: None,
                     symbol: None,
                     image: None,
@@ -92,13 +92,25 @@ impl<S: Storage, C: StarknetClient> ContractManager<S, C> {
     pub async fn get_contract_type(&self, contract_address: FieldElement) -> Result<ContractType> {
         let _block = BlockId::Tag(BlockTag::Pending);
 
-        if self.is_erc721(contract_address).await? {
-            Ok(ContractType::ERC721)
-        } else if self.is_erc1155(contract_address).await? {
-            Ok(ContractType::ERC1155)
+        if self.is_erc20(contract_address).await? {
+            Ok(ContractType::ERC20)
+        } else if self.is_unruggable_meme_coin(contract_address).await? {
+            Ok(ContractType::UNRUGGABLE)
         } else {
             Ok(ContractType::Other)
         }
+    }
+
+    pub async fn is_erc20(&self, contract_address: FieldElement) -> Result<bool> {
+        // TODO
+
+        return Ok(false);
+    }
+
+    pub async fn is_unruggable_meme_coin(&self, contract_address: FieldElement) -> Result<bool> {
+        // TODO
+
+        return Ok(false);
     }
 
     /// Returns true if the contract is ERC721, false otherwise.
